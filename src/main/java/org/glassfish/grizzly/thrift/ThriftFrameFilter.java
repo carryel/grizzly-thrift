@@ -1,4 +1,5 @@
 /*
+ * Copyright (c) 2026 Contributors to the Eclipse Foundation.
  * Copyright (c) 2011, 2017 Oracle and/or its affiliates. All rights reserved.
  *
  * This program and the accompanying materials are made available under the
@@ -18,6 +19,7 @@ package org.glassfish.grizzly.thrift;
 
 import java.io.IOException;
 
+import org.apache.thrift.TConfiguration;
 import org.glassfish.grizzly.Buffer;
 import org.glassfish.grizzly.Connection;
 import org.glassfish.grizzly.Grizzly;
@@ -40,18 +42,18 @@ import org.glassfish.grizzly.memory.MemoryManager;
 public class ThriftFrameFilter extends BaseFilter {
 
     private static final int THRIFT_FRAME_HEADER_LENGTH = 4;
-    private static final int DEFAULT_DEFAULT_MAX_THRIFT_FRAME_LENGTH = 512 * 1024;
+    private static final int DEFAULT_MAX_THRIFT_FRAME_LENGTH = 512 * 1024;
     private final int maxFrameLength;
 
     private final Attribute<Integer> lengthAttribute = Grizzly.DEFAULT_ATTRIBUTE_BUILDER.createAttribute("ThriftFilter.FrameSize");
 
     public ThriftFrameFilter() {
-        this(DEFAULT_DEFAULT_MAX_THRIFT_FRAME_LENGTH);
+        this(TConfiguration.DEFAULT_MAX_FRAME_SIZE);
     }
 
     public ThriftFrameFilter(final int maxFrameLength) {
-        if (maxFrameLength < DEFAULT_DEFAULT_MAX_THRIFT_FRAME_LENGTH) {
-            this.maxFrameLength = DEFAULT_DEFAULT_MAX_THRIFT_FRAME_LENGTH;
+        if (maxFrameLength < DEFAULT_MAX_THRIFT_FRAME_LENGTH) {
+            this.maxFrameLength = DEFAULT_MAX_THRIFT_FRAME_LENGTH;
         } else {
             this.maxFrameLength = maxFrameLength;
         }

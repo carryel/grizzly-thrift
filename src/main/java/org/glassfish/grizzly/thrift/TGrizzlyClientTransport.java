@@ -1,4 +1,5 @@
 /*
+ * Copyright (c) 2026 Contributors to the Eclipse Foundation.
  * Copyright (c) 2011, 2017 Oracle and/or its affiliates. All rights reserved.
  *
  * This program and the accompanying materials are made available under the
@@ -24,6 +25,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicBoolean;
 
+import org.apache.thrift.TConfiguration;
 import org.apache.thrift.transport.TTransportException;
 import org.glassfish.grizzly.Buffer;
 import org.glassfish.grizzly.Connection;
@@ -72,6 +74,10 @@ public class TGrizzlyClientTransport extends AbstractTGrizzlyTransport {
     }
 
     public static TGrizzlyClientTransport create(final Connection connection, final long readTimeoutMillis, final long writeTimeoutMillis) {
+        return create(connection, readTimeoutMillis, writeTimeoutMillis, null);
+    }
+
+    public static TGrizzlyClientTransport create(final Connection connection, final long readTimeoutMillis, final long writeTimeoutMillis, final TConfiguration config) {
         if (connection == null) {
             throw new IllegalStateException("connection should not be null.");
         }
@@ -89,10 +95,15 @@ public class TGrizzlyClientTransport extends AbstractTGrizzlyTransport {
         if (thriftClientFilter == null) {
             throw new IllegalStateException("thriftClientFilter should not be null.");
         }
-        return new TGrizzlyClientTransport(connection, readTimeoutMillis, writeTimeoutMillis);
+        try {
+            return new TGrizzlyClientTransport(connection, readTimeoutMillis, writeTimeoutMillis, config);
+        } catch (TTransportException e) {
+            throw new IllegalStateException(e);
+        }
     }
 
-    private TGrizzlyClientTransport(final Connection connection, final long readTimeoutMillis, final long writeTimeoutMillis) {
+    private TGrizzlyClientTransport(final Connection connection, final long readTimeoutMillis, final long writeTimeoutMillis, final TConfiguration config) throws TTransportException {
+        super(config);
         this.connection = connection;
         this.inputBuffersQueue = new LinkedTransferQueue<>();
         inputBuffersQueueAttribute.set(connection, this.inputBuffersQueue);
@@ -155,6 +166,8 @@ public class TGrizzlyClientTransport extends AbstractTGrizzlyTransport {
             throw new TTransportException(ee);
         } catch (InterruptedException ie) {
             Thread.currentThread().interrupt();
+        } finally {
+            resetConsumedMessageSize(-1L);
         }
     }
 
