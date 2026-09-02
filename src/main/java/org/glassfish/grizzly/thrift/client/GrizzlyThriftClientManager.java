@@ -1,4 +1,5 @@
 /*
+ * Copyright (c) 2026 Contributors to the Eclipse Foundation.
  * Copyright (c) 2012, 2017 Oracle and/or its affiliates. All rights reserved.
  *
  * This program and the accompanying materials are made available under the
@@ -23,6 +24,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+import org.apache.thrift.TConfiguration;
 import org.apache.thrift.TServiceClient;
 import org.apache.thrift.TServiceClientFactory;
 import org.glassfish.grizzly.Grizzly;
@@ -62,9 +64,11 @@ public class GrizzlyThriftClientManager implements ThriftClientManager {
 
     private ZKClient zkClient;
     private final int maxThriftFrameLength;
+    private final int maxThriftMessageLength;
 
     private GrizzlyThriftClientManager(final Builder builder) {
         this.maxThriftFrameLength = builder.maxThriftFrameLength;
+        this.maxThriftMessageLength = builder.maxThriftMessageLength;
         TCPNIOTransport transportLocal = builder.transport;
         if (transportLocal == null) {
             isExternalTransport = false;
@@ -206,6 +210,10 @@ public class GrizzlyThriftClientManager implements ThriftClientManager {
         return maxThriftFrameLength;
     }
 
+    int getMaxThriftMessageLength() {
+        return maxThriftMessageLength;
+    }
+
     public static class Builder {
 
         private TCPNIOTransport transport;
@@ -215,7 +223,8 @@ public class GrizzlyThriftClientManager implements ThriftClientManager {
         private IOStrategy ioStrategy = SameThreadIOStrategy.getInstance();
         private boolean blocking = false;
         private ExecutorService workerThreadPool;
-        private int maxThriftFrameLength = 1024 * 1024; // 1M
+        private int maxThriftFrameLength = TConfiguration.DEFAULT_MAX_FRAME_SIZE;
+        private int maxThriftMessageLength = TConfiguration.DEFAULT_MAX_MESSAGE_SIZE;
 
         // zookeeper config
         private ZooKeeperConfig zooKeeperConfig;
@@ -325,6 +334,17 @@ public class GrizzlyThriftClientManager implements ThriftClientManager {
          */
         public Builder maxThriftFrameLength(final int maxThriftFrameLength) {
             this.maxThriftFrameLength = maxThriftFrameLength;
+            return this;
+        }
+
+        /**
+         * Set the max length of thrift message
+         *
+         * @param maxThriftMessageLength max message length
+         * @return this builder
+         */
+        public Builder maxThriftMessageLength(final int maxThriftMessageLength) {
+            this.maxThriftMessageLength = maxThriftMessageLength;
             return this;
         }
 

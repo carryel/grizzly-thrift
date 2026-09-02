@@ -1,4 +1,5 @@
 /*
+ * Copyright (c) 2026 Contributors to the Eclipse Foundation.
  * Copyright (c) 2011, 2022 Oracle and/or its affiliates. All rights reserved.
  *
  * This program and the accompanying materials are made available under the
@@ -19,7 +20,7 @@ package org.glassfish.grizzly.thrift;
 import java.io.IOException;
 
 import org.apache.thrift.TConfiguration;
-import org.apache.thrift.transport.TTransport;
+import org.apache.thrift.transport.TEndpointTransport;
 import org.apache.thrift.transport.TTransportException;
 import org.glassfish.grizzly.Buffer;
 import org.glassfish.grizzly.utils.BufferOutputStream;
@@ -31,7 +32,15 @@ import org.glassfish.grizzly.utils.BufferOutputStream;
  *
  * @author Bongjae Chang
  */
-public abstract class AbstractTGrizzlyTransport extends TTransport {
+public abstract class AbstractTGrizzlyTransport extends TEndpointTransport {
+
+    public AbstractTGrizzlyTransport() throws TTransportException {
+        super(null);
+    }
+
+    public AbstractTGrizzlyTransport(final TConfiguration config) throws TTransportException {
+        super(config);
+    }
 
     @Override
     public void open() throws TTransportException {
@@ -39,10 +48,12 @@ public abstract class AbstractTGrizzlyTransport extends TTransport {
 
     @Override
     public int read(byte[] buf, int off, int len) throws TTransportException {
+        checkReadBytesAvailable((long) len);
         final Buffer input = getInputBuffer();
         final int readableBytes = input.remaining();
         final int bytesToRead = len > readableBytes ? readableBytes : len;
         input.get(buf, off, bytesToRead);
+        countConsumedMessageBytes((long) bytesToRead);
         return bytesToRead;
     }
 
@@ -60,21 +71,6 @@ public abstract class AbstractTGrizzlyTransport extends TTransport {
 
     @Override
     public abstract void flush() throws TTransportException;
-
-    @Override
-    public TConfiguration getConfiguration() {
-        return null;
-    }
-
-    @Override
-    public void updateKnownMessageSize(long l) throws TTransportException {
-
-    }
-
-    @Override
-    public void checkReadBytesAvailable(long l) throws TTransportException {
-
-    }
 
     protected abstract Buffer getInputBuffer() throws TTransportException;
 

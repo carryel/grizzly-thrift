@@ -1,4 +1,5 @@
 /*
+ * Copyright (c) 2026 Contributors to the Eclipse Foundation.
  * Copyright (c) 2011, 2017 Oracle and/or its affiliates. All rights reserved.
  *
  * This program and the accompanying materials are made available under the
@@ -18,12 +19,14 @@ package org.glassfish.grizzly.thrift;
 
 import java.io.IOException;
 
+import org.apache.thrift.TConfiguration;
 import org.apache.thrift.TException;
 import org.apache.thrift.TProcessor;
 import org.apache.thrift.protocol.TBinaryProtocol;
 import org.apache.thrift.protocol.TProtocol;
 import org.apache.thrift.protocol.TProtocolFactory;
 import org.apache.thrift.transport.TTransport;
+import org.apache.thrift.transport.TTransportException;
 import org.glassfish.grizzly.Buffer;
 import org.glassfish.grizzly.filterchain.BaseFilter;
 import org.glassfish.grizzly.filterchain.FilterChainContext;
@@ -63,26 +66,44 @@ public class ThriftServerFilter extends BaseFilter {
 
     private final TProcessor processor;
     private final TProtocolFactory protocolFactory;
+    private final TConfiguration config;
     private final int responseSize;
 
     public ThriftServerFilter(final TProcessor processor) {
-        this(processor, new TBinaryProtocol.Factory(), THRIFT_DEFAULT_RESPONSE_BUFFER_SIZE);
+        this(processor, new TBinaryProtocol.Factory(), null, THRIFT_DEFAULT_RESPONSE_BUFFER_SIZE);
     }
 
     public ThriftServerFilter(final TProcessor processor, final TProtocolFactory protocolFactory) {
-        this(processor, protocolFactory, THRIFT_DEFAULT_RESPONSE_BUFFER_SIZE);
+        this(processor, protocolFactory, null, THRIFT_DEFAULT_RESPONSE_BUFFER_SIZE);
     }
 
     public ThriftServerFilter(final TProcessor processor, final int responseSize) {
-        this(processor, new TBinaryProtocol.Factory(), responseSize);
+        this(processor, new TBinaryProtocol.Factory(), null, responseSize);
+    }
+
+    public ThriftServerFilter(final TProcessor processor, final TConfiguration config) {
+        this(processor, new TBinaryProtocol.Factory(), config, THRIFT_DEFAULT_RESPONSE_BUFFER_SIZE);
     }
 
     public ThriftServerFilter(final TProcessor processor, final TProtocolFactory protocolFactory, final int responseSize) {
+        this(processor, protocolFactory, null, responseSize);
+    }
+
+    public ThriftServerFilter(final TProcessor processor, final TProtocolFactory protocolFactory, final TConfiguration config) {
+        this(processor, protocolFactory, config, THRIFT_DEFAULT_RESPONSE_BUFFER_SIZE);
+    }
+
+    public ThriftServerFilter(final TProcessor processor, final TProtocolFactory protocolFactory, final TConfiguration config, final int responseSize) {
         this.processor = processor;
         if (protocolFactory == null) {
             this.protocolFactory = new TBinaryProtocol.Factory();
         } else {
             this.protocolFactory = protocolFactory;
+        }
+        if (config == null) {
+            this.config = TConfiguration.DEFAULT;
+        } else {
+            this.config = config;
         }
         if (responseSize < THRIFT_DEFAULT_RESPONSE_BUFFER_SIZE) {
             this.responseSize = THRIFT_DEFAULT_RESPONSE_BUFFER_SIZE;
@@ -106,7 +127,14 @@ public class ThriftServerFilter extends BaseFilter {
 
         final MemoryManager memoryManager = ctx.getMemoryManager();
         final BufferOutputStream outputStream = new BufferOutputStream(memoryManager, memoryManager.allocate(responseSize));
-        final TTransport ttransport = new TGrizzlyServerTransport(input, outputStream);
+        final TTransport ttransport;
+        try {
+            ttransport = new TGrizzlyServerTransport(input, outputStream, config);
+        } catch (TTransportException tte) {
+            input.dispose();
+            outputStream.getBuffer().dispose();
+            throw new IOException(tte);
+        }
         final TProtocol protocol = protocolFactory.getProtocol(ttransport);
         try {
             processor.process(protocol, protocol);

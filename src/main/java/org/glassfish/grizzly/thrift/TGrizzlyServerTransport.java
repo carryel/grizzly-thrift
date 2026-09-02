@@ -1,4 +1,5 @@
 /*
+ * Copyright (c) 2026 Contributors to the Eclipse Foundation.
  * Copyright (c) 2011, 2017 Oracle and/or its affiliates. All rights reserved.
  *
  * This program and the accompanying materials are made available under the
@@ -16,6 +17,7 @@
 
 package org.glassfish.grizzly.thrift;
 
+import org.apache.thrift.TConfiguration;
 import org.apache.thrift.transport.TTransportException;
 import org.glassfish.grizzly.Buffer;
 import org.glassfish.grizzly.utils.BufferOutputStream;
@@ -33,7 +35,8 @@ public class TGrizzlyServerTransport extends AbstractTGrizzlyTransport {
     private final Buffer input;
     private final BufferOutputStream outputStream;
 
-    public TGrizzlyServerTransport(final Buffer input, final BufferOutputStream outputStream) {
+    public TGrizzlyServerTransport(final Buffer input, final BufferOutputStream outputStream, final TConfiguration config) throws TTransportException {
+        super(config);
         this.input = input;
         this.outputStream = outputStream;
     }
@@ -49,6 +52,7 @@ public class TGrizzlyServerTransport extends AbstractTGrizzlyTransport {
 
     @Override
     public void flush() throws TTransportException {
+        resetConsumedMessageSize(-1L);
     }
 
     @Override

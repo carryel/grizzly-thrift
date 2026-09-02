@@ -1,4 +1,5 @@
 /*
+ * Copyright (c) 2026 Contributors to the Eclipse Foundation.
  * Copyright (c) 2012, 2017 Oracle and/or its affiliates. All rights reserved.
  *
  * This program and the accompanying materials are made available under the
@@ -36,6 +37,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+import org.apache.thrift.TConfiguration;
 import org.apache.thrift.TServiceClient;
 import org.apache.thrift.TServiceClientFactory;
 import org.apache.thrift.protocol.TBinaryProtocol;
@@ -160,6 +162,8 @@ public class GrizzlyThriftClient<T extends TServiceClient> implements ThriftClie
 
     private final TransferProtocols transferProtocol;
     private final int maxThriftFrameLength;
+    private final int maxThriftMessageLength;
+    private final TConfiguration thriftConfig;
     private final String httpUriPath;
     private Map<String, String> httpHeaders;
     private final Processor processor;
@@ -177,6 +181,10 @@ public class GrizzlyThriftClient<T extends TServiceClient> implements ThriftClie
         this.retainLastServer = builder.retainLastServer;
 
         this.maxThriftFrameLength = builder.maxThriftFrameLength;
+        this.maxThriftMessageLength = builder.maxThriftMessageLength;
+        this.thriftConfig =
+                TConfiguration.custom().setMaxFrameSize(maxThriftFrameLength).setMaxMessageSize(maxThriftMessageLength)
+                              .build();
         this.transferProtocol = builder.transferProtocol;
         this.httpUriPath = builder.httpUriPath;
         this.httpHeaders = builder.httpHeaders;
@@ -247,7 +255,7 @@ public class GrizzlyThriftClient<T extends TServiceClient> implements ThriftClie
                         if (connection != null) {
                             connectionPoolAttribute.set(connection, connectionPool);
                             final TGrizzlyClientTransport ttransport = TGrizzlyClientTransport.create(connection, responseTimeoutInMillis,
-                                    writeTimeoutInMillis);
+                                    writeTimeoutInMillis, thriftConfig);
                             final TProtocol protocol;
                             if (thriftProtocol == ThriftProtocols.BINARY) {
                                 protocol = new TBinaryProtocol(ttransport);
@@ -679,12 +687,12 @@ public class GrizzlyThriftClient<T extends TServiceClient> implements ThriftClie
         return true;
     }
 
-    private boolean validateConnection(final Connection connection) {
+    private boolean validateConnection(final Connection connection) throws TTransportException {
         if (connection == null) {
             return false;
         }
         final TGrizzlyClientTransport ttransport = TGrizzlyClientTransport.create(connection, responseTimeoutInMillis,
-                writeTimeoutInMillis);
+                writeTimeoutInMillis, thriftConfig);
         final TProtocol protocol;
         if (thriftProtocol == ThriftProtocols.BINARY) {
             protocol = new TBinaryProtocol(ttransport);
@@ -846,6 +854,7 @@ public class GrizzlyThriftClient<T extends TServiceClient> implements ThriftClie
 
         private final ZKClient zkClient;
         private int maxThriftFrameLength;
+        private int maxThriftMessageLength;
 
         private String httpUriPath = "/";
         private Map<String, String> httpHeaders;
@@ -858,6 +867,7 @@ public class GrizzlyThriftClient<T extends TServiceClient> implements ThriftClie
             this.clientFactory = clientFactory;
             this.zkClient = manager.getZkClient();
             this.maxThriftFrameLength = manager.getMaxThriftFrameLength();
+            this.maxThriftMessageLength = manager.getMaxThriftMessageLength();
         }
 
         /**
@@ -1086,6 +1096,17 @@ public class GrizzlyThriftClient<T extends TServiceClient> implements ThriftClie
             return this;
         }
 
+        /**
+         * Set the max length of thrift message
+         *
+         * @param maxThriftMessageLength max message length
+         * @return this builder
+         */
+        public Builder maxThriftMessageLength(final int maxThriftMessageLength) {
+            this.maxThriftMessageLength = maxThriftMessageLength;
+            return this;
+        }
+
         public Builder<T> httpUriPath(final String httpUriPath) {
             if (httpUriPath == null || httpUriPath.isEmpty()) {
                 return this;
@@ -1137,6 +1158,7 @@ public class GrizzlyThriftClient<T extends TServiceClient> implements ThriftClie
         sb.append(", zooKeeperServerListPath='").append(zooKeeperServerListPath).append('\'');
         sb.append(", transferProtocol=").append(transferProtocol);
         sb.append(", maxThriftFrameLength=").append(maxThriftFrameLength);
+        sb.append(", maxThriftMessageLength=").append(maxThriftMessageLength);
         sb.append(", httpUriPath='").append(httpUriPath).append('\'');
         sb.append('}');
         return sb.toString();
