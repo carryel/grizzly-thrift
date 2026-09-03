@@ -1,4 +1,5 @@
 /*
+ * Copyright (c) 2026 Contributors to the Eclipse Foundation.
  * Copyright (c) 2014, 2017 Oracle and/or its affiliates. All rights reserved.
  *
  * This program and the accompanying materials are made available under the
@@ -24,6 +25,7 @@ import org.glassfish.grizzly.filterchain.TransportFilter;
 import org.glassfish.grizzly.nio.transport.TCPNIOTransport;
 import org.glassfish.grizzly.nio.transport.TCPNIOTransportBuilder;
 import org.glassfish.grizzly.thrift.CalculatorHandler;
+import org.glassfish.grizzly.thrift.TestUtils;
 import org.glassfish.grizzly.thrift.ThriftFrameFilter;
 import org.glassfish.grizzly.thrift.ThriftServerFilter;
 import org.junit.Assert;
@@ -35,6 +37,7 @@ import java.net.InetSocketAddress;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import static java.time.Duration.ofSeconds;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
@@ -45,9 +48,9 @@ import static org.junit.Assert.assertTrue;
  */
 public class GrizzlyThriftClientFailoverTest {
 
-    private static final int PORT = 7791;
-    private static final int INVALID_PORT1 = 7800;
-    private static final int FAILOVER_PORT = 7792;
+    private static final int PORT = 7795;
+    private static final int INVALID_PORT1 = 7796;
+    private static final int FAILOVER_PORT = 7797;
 
     @Test
     public void testServerRemains() throws Exception {
@@ -302,14 +305,14 @@ public class GrizzlyThriftClientFailoverTest {
         }
     }
 
-    private static TCPNIOTransport createThriftServer(final int port, final ThriftServerFilter filter) throws IOException {
+    private static TCPNIOTransport createThriftServer(final int port, final ThriftServerFilter filter) throws Exception {
         final FilterChainBuilder filterChainBuilder = FilterChainBuilder.stateless();
         filterChainBuilder.add(new TransportFilter());
         filterChainBuilder.add(new ThriftFrameFilter());
         filterChainBuilder.add(filter);
         final TCPNIOTransport transport = TCPNIOTransportBuilder.newInstance().build();
         transport.setProcessor(filterChainBuilder.build());
-        transport.bind(port);
+        TestUtils.retryUntilSuccess(() -> transport.bind(port), ofSeconds(10), ofSeconds(1));
         transport.start();
         return transport;
     }
