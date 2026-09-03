@@ -1,4 +1,5 @@
 /*
+ * Copyright (c) 2026 Contributors to the Eclipse Foundation.
  * Copyright (c) 2012, 2017 Oracle and/or its affiliates. All rights reserved.
  *
  * This program and the accompanying materials are made available under the
@@ -23,6 +24,7 @@ import org.glassfish.grizzly.http.server.NetworkListener;
 import org.glassfish.grizzly.nio.transport.TCPNIOTransport;
 import org.glassfish.grizzly.nio.transport.TCPNIOTransportBuilder;
 import org.glassfish.grizzly.thrift.CalculatorHandler;
+import org.glassfish.grizzly.thrift.TestUtils;
 import org.glassfish.grizzly.thrift.ThriftFrameFilter;
 import org.glassfish.grizzly.thrift.ThriftServerFilter;
 import org.glassfish.grizzly.thrift.http.ThriftHttpHandler;
@@ -40,6 +42,7 @@ import java.util.HashSet;
 import java.util.Set;
 import java.util.concurrent.CountDownLatch;
 
+import static java.time.Duration.ofSeconds;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
@@ -307,14 +310,14 @@ public class GrizzlyThriftClientTest {
         thriftServer2.shutdownNow();
     }
 
-    private static TCPNIOTransport createThriftServer(final int port, final Calculator.Processor tprocessor) throws IOException {
+    private static TCPNIOTransport createThriftServer(final int port, final Calculator.Processor tprocessor) throws Exception {
         final FilterChainBuilder filterChainBuilder = FilterChainBuilder.stateless();
         filterChainBuilder.add(new TransportFilter());
         filterChainBuilder.add(new ThriftFrameFilter());
         filterChainBuilder.add(new ThriftServerFilter(tprocessor));
         final TCPNIOTransport transport = TCPNIOTransportBuilder.newInstance().build();
         transport.setProcessor(filterChainBuilder.build());
-        transport.bind(port);
+        TestUtils.retryUntilSuccess(() -> transport.bind(port), ofSeconds(10), ofSeconds(1));
         transport.start();
         return transport;
     }

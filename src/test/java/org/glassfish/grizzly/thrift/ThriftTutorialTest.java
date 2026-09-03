@@ -1,4 +1,5 @@
 /*
+ * Copyright (c) 2026 Contributors to the Eclipse Foundation.
  * Copyright (c) 2011, 2017 Oracle and/or its affiliates. All rights reserved.
  *
  * This program and the accompanying materials are made available under the
@@ -60,6 +61,7 @@ import org.junit.runners.Parameterized;
 import org.junit.runners.Parameterized.Parameters;
 import org.junit.runner.RunWith;
 
+import static java.time.Duration.ofSeconds;
 import static org.junit.Assert.*;
 
 /**
@@ -116,7 +118,7 @@ public class ThriftTutorialTest {
         transport.setProcessor(filterChainBuilder.build());
 
         try {
-            transport.bind(PORT);
+            TestUtils.retryUntilSuccess(() -> transport.bind(PORT), ofSeconds(10), ofSeconds(1));
             transport.start();
 
             for (int i = 0; i < clientsNum; i++) {
